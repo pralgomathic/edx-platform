@@ -18,6 +18,11 @@ class OpenResponseTest(WebAppTest):
     Tests that interact with ORA (Open Response Assessment) through the LMS UI.
     """
 
+    page_object_classes = [
+        AutoAuthPage, CourseInfoPage, TabNavPage,
+        CourseNavPage, OpenResponsePage
+    ]
+
     def setUp(self):
         """
         Always start in the subsection with open response problems.
@@ -43,9 +48,6 @@ class OpenResponseTest(WebAppTest):
             'Example Week 2: Get Interactive', 'Homework - Essays'
         )
 
-    @property
-    def page_object_classes(self):
-        return [AutoAuthPage, CourseInfoPage, TabNavPage, CourseNavPage, OpenResponsePage]
 
     @property
     def fixtures(self):
@@ -68,45 +70,7 @@ class OpenResponseTest(WebAppTest):
 
         return [course_fix]
 
-    def test_self_assessment(self):
-        """
-        Test that the user can self-assess an essay.
-        """
-        # Navigate to the self-assessment problem and submit an essay
-        self.ui['lms.course_nav'].go_to_sequential('Self-Assessed')
-        self._submit_essay('self', 'Censorship in the Libraries')
-
-        # Check the rubric categories
-        self.assertEqual(
-            self.ui['lms.open_response'].rubric_categories,
-            ["Writing Applications", "Language Conventions"]
-        )
-
-        # Fill in the self-assessment rubric
-        self.ui['lms.open_response'].submit_self_assessment([0, 1])
-
-        # Expect that we get feedback
-        self.assertEqual(
-            self.ui['lms.open_response'].rubric_feedback,
-            ['incorrect', 'correct']
-        )
-
-    def test_ai_assessment(self):
-        """
-        Test that a user can submit an essay and receive AI feedback.
-        """
-
-        # Navigate to the AI-assessment problem and submit an essay
-        self.ui['lms.course_nav'].go_to_sequential('AI-Assessed')
-        self._submit_essay('ai', 'Censorship in the Libraries')
-
-        # Expect UI feedback that the response was submitted
-        self.assertEqual(
-            self.ui['lms.open_response'].grader_status,
-            "Your response has been submitted. Please check back later for your grade."
-        )
-
-    def _submit_essay(self, expected_assessment_type, expected_prompt):
+    def submit_essay(self, expected_assessment_type, expected_prompt):
         """
         Submit an essay and verify that the problem uses
         the `expected_assessment_type` ("self", "ai", or "peer") and
@@ -130,3 +94,93 @@ class OpenResponseTest(WebAppTest):
 
         # Submit the response
         self.ui['lms.open_response'].submit_response()
+
+
+class SelfAssessmentTest(OpenResponseTest):
+    """
+    Test ORA self-assessment.
+    """
+
+    def test_self_assessment(self):
+        """
+        Given I am viewing a self-assessment problem
+        When I submit an essay and complete a self-assessment rubric
+        Then I see a scored rubric
+        And I see my score in the progress page.
+        """
+        # Navigate to the self-assessment problem and submit an essay
+        self.ui['lms.course_nav'].go_to_sequential('Self-Assessed')
+        self.submit_essay('self', 'Censorship in the Libraries')
+
+        # Check the rubric categories
+        self.assertEqual(
+            self.ui['lms.open_response'].rubric_categories,
+            ["Writing Applications", "Language Conventions"]
+        )
+
+        # Fill in the self-assessment rubric
+        self.ui['lms.open_response'].submit_self_assessment([0, 1])
+
+        # Expect that we get feedback
+        self.assertEqual(
+            self.ui['lms.open_response'].rubric_feedback,
+            ['incorrect', 'correct']
+        )
+
+
+class AIAssessmentTest(OpenResponseTest):
+    """
+    Test ORA AI-assessment.
+    """
+
+    def test_ai_assessment(self):
+        """
+        Given I am viewing an AI-assessment problem that has a trained ML model
+        When I submit an essay and wait for a response
+        Then I see a scored rubric
+        And I see my score in the progress page.
+        """
+
+        # Navigate to the AI-assessment problem and submit an essay
+        self.ui['lms.course_nav'].go_to_sequential('AI-Assessed')
+        self.submit_essay('ai', 'Censorship in the Libraries')
+
+        # Expect UI feedback that the response was submitted
+        self.assertEqual(
+            self.ui['lms.open_response'].grader_status,
+            "Your response has been submitted. Please check back later for your grade."
+        )
+
+        from nose.tools import set_trace; set_trace()
+
+
+class PeerAssessmentTest(OpenResponseTest):
+    """
+    Test ORA peer-assessment.
+    """
+
+    def test_calibration(self):
+        """
+        Given I am viewing a peer-assessment problem
+        And the instructor has submitted enough example essays
+        When I submit submit acceptable scores for enough calibration essays
+        Then I am able to peer-grade other students' essays.
+        """
+        pass
+
+    def test_submit_feedback(self):
+        """
+        Given I am viewing another student's essay in peer-grading
+        When I submit rubric scores and written feedback
+        Then I see that my feedback has been submitted.
+        """
+        pass
+
+    def test_receive_feedback(self):
+        """
+        Given I have submitted an essay for peer-assessment
+        And enough other students have scored my essay
+        Then I can view the scores and written feedback
+        And I see my score in the progress page.
+        """
+        pass
