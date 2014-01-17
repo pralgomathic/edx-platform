@@ -246,7 +246,7 @@ class @MarkdownEditingDescriptor extends XModule.Descriptor
               processNumericalResponse = function (value) {
                   var params, answer, string;
 
-                  if (_.contains([ '[', '(' ], value[0]) && _.contains([ ']', ')' ], value[-1]) ) {
+                  if (_.contains([ '[', '(' ], value[0]) && _.contains([ ']', ')' ], value[value.length-1]) ) {
                     // [5, 7) or (5, 7), or (1.2345 * (2+3), 7*4 ]  - range tolerance case
                     // = (5*2)*3 should not be used as range tolerance
                     string = '<numericalresponse answer="' + value +  '">\n';

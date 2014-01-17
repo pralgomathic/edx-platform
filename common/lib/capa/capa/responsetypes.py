@@ -26,6 +26,7 @@ import subprocess
 import textwrap
 import traceback
 import xml.sax.saxutils as saxutils
+import operator
 
 from collections import namedtuple
 from shapely.geometry import Point, MultiPoint
@@ -832,6 +833,7 @@ class NumericalResponse(LoncapaResponse):
     max_inputfields = 1
 
     def __init__(self, *args, **kwargs):
+        self.answer = ''
         self.correct_answer = ''
         self.tolerance = default_tolerance
         self.range_tolerance = False
@@ -840,46 +842,42 @@ class NumericalResponse(LoncapaResponse):
     def setup_response(self):
         xml = self.xml
         context = self.context
-        self.correct_answer = contextualize_text(xml.get('answer'), context)
+        answer  = xml.get('answer')
 
-        # Find the tolerance
-        tolerance_xml = xml.xpath(
-            '//*[@id=$id]//responseparam[@type="tolerance"]/@default',
-            id=xml.get('id')
-        )
-        if tolerance_xml:  # If it isn't an empty list...
-            self.tolerance = contextualize_text(tolerance_xml[0], context)
+        if answer.startswith(('[', '(')) and answer.endswith((']', ')')):  # range tolerance case
+            self.range_tolerance = True
+            self.operators = (operator.ge if answer.startswith('[') else operator.gt,
+                                    operator.le  if answer.endswith(']') else operator.lt)
+            self.answers_range = [contextualize_text(x, context) for x in answer[1:-1].split(',')]
+        else:
+            self.correct_answer = contextualize_text(answer, context)
 
-        # Find right range tolerance
-        range_tolerance_xml = xml.xpath(
-            '//*[@id=$id]//responseparam[@type="range_tolerance"]/@default',
-            id=xml.get('id')
-        )
+            # Find the tolerance
+            tolerance_xml = xml.xpath(
+                '//*[@id=$id]//responseparam[@type="tolerance"]/@default',
+                id=xml.get('id')
+            )
+            if tolerance_xml:  # If it isn't an empty list...
+                self.tolerance = contextualize_text(tolerance_xml[0], context)
 
-        if range_tolerance_xml:  # If it isn't an empty list...
-            import ipdb; ipdb.set_trace()
-            # self.left_tolerance = contextualize_text(tolerance_xml[0], context)
-            # self.right_tolerance = contextualize_text(tolerance_xml[0], context)
-            # self.range_tolerance = True
 
-    def get_staff_ans(self):
+    def get_staff_ans(self, answer):
         """
         Given the staff answer as a string, find its float value.
 
         Use `evaluator` for this, but for backward compatability, try the
         built-in method `complex` (which used to be the standard).
         """
-
         try:
-            correct_ans = complex(self.correct_answer)
+            correct_ans = complex(answer)
         except ValueError:
             # When `correct_answer` is not of the form X+Yj, it raises a
             # `ValueError`. Then test if instead it is a math expression.
             # `complex` seems to only generate `ValueErrors`, only catch these.
             try:
-                correct_ans = evaluator({}, {}, self.correct_answer)
+                correct_ans = evaluator({}, {}, answer)
             except Exception:
-                log.debug("Content error--answer '%s' is not a valid number", self.correct_answer)
+                log.debug("Content error--answer '%s' is not a valid number", answer)
                 raise StudentInputError(
                     "There was a problem with the staff answer to this problem"
                 )
@@ -890,7 +888,18 @@ class NumericalResponse(LoncapaResponse):
         '''Grade a numeric response '''
         student_answer = student_answers[self.answer_id]
 
-        correct_float = self.get_staff_ans()
+        if self.range_tolerance:
+            boundaries = []
+            for answer in self.answers_range:
+                boundary = self.get_staff_ans(answer)
+                if boundary.imag != 0:
+                    log.debug("Content error--answer '%s' is complex and can't be used in range tolerance problem", answer)
+                    raise StudentInputError(
+                        "There was a problem with the staff answer to this problem"
+                    )
+                boundaries.append(boundary.real)
+        else:
+            correct_float = self.get_staff_ans(self.correct_answer)
 
         general_exception = StudentInputError(
             u"Could not interpret '{0}' as a number".format(cgi.escape(student_answer))
@@ -923,10 +932,16 @@ class NumericalResponse(LoncapaResponse):
         except Exception:
             raise general_exception
         # End `evaluator` block -- we figured out the student's answer!
-
-        correct = compare_with_tolerance(
-            student_float, correct_float, self.tolerance
-        )
+        # import ipdb; ipdb.set_trace()
+        if self.range_tolerance:
+            if isinstance(student_float, complex):
+                raise StudentInputError(u"You may not use complex numbers in range tolerance problems")
+            import ipdb; ipdb.set_trace()
+            correct = all([op(student_float, boundary) for op, boundary in zip(self.operators, boundaries)])
+        else:
+            correct = compare_with_tolerance(
+                student_float, correct_float, self.tolerance
+            )
         if correct:
             return CorrectMap(self.answer_id, 'correct')
         else:
