@@ -559,14 +559,28 @@ function (VideoPlayer) {
     //     example the length of the video can be determined from the meta
     //     data.
     function fetchMetadata() {
-        var _this = this;
+        var _this = this,
+            numOfVideosWithMetadata = 0,
+            totalNumOfVideos = 0;
 
         this.metadata = {};
 
         $.each(this.videos, function (speed, url) {
+            totalNumOfVideos += 1;
+
             _this.getVideoMetadata(url, function (data) {
                 if (data.data) {
                     _this.metadata[data.data.id] = data.data;
+
+                    numOfVideosWithMetadata += 1;
+
+                    // When metadata has been received for all of the
+                    // video, trigger an event. It will be used to show the
+                    // start-end time range using the duration value from
+                    // the metadata.
+                    if (numOfVideosWithMetadata === totalNumOfVideos) {
+                        _this.el.trigger('metadata_received');
+                    }
                 }
             });
         });

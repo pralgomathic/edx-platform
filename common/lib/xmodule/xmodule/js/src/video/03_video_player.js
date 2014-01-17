@@ -178,58 +178,29 @@ function (HTML5Video, Resizer) {
 
                 // We wait for metadata to arrive, before we request the update
                 // of the VCR video time, and of the start-end time region.
-                // Metadata contains duration of the video. We wait for 2
-                // seconds, and then abandon our attempts to update the VCR
-                // video time (and the start-end time region) using metadata.
-                //
-                // 2 seconds has been chosen because there is no point in
-                // waiting for a longer period of time. If by the end of 2
-                // seconds metadata does not arrive, then either the user has
-                // a really slow connection, or something is wrong with the
-                // YouTube service, or YouTube is blocked. In either case
-                // we have other mechanisms to handle these situations. The
-                // start-end range will be shown when the video start playing.
-                (function () {
-                    var checkInterval = window.setInterval(
-                            checkForMetadata, 50
-                        ),
-                        numberOfChecks = 0;
+                // Metadata contains duration of the video.
+                state.el.on('metadata_received', function () {
+                    duration = state.videoPlayer.duration();
 
-                    return;
-
-                    function checkForMetadata() {
-                        if (state.metadata && state.metadata[state.youtubeId()]) {
-                            duration = state.videoPlayer.duration();
-
-                            // After initialization, update the VCR with total time.
-                            // At this point only the metadata duration is available (not
-                            // very precise), but it is better than having 00:00:00 for
-                            // total time.
-                            state.trigger(
-                                'videoControl.updateVcrVidTime',
-                                {
-                                    time: 0,
-                                    duration: duration
-                                }
-                            );
-
-                            state.trigger(
-                                'videoProgressSlider.updateStartEndTimeRegion',
-                                {
-                                    duration: duration
-                                }
-                            );
-
-                            window.clearInterval(checkInterval);
-                        } else {
-                            numberOfChecks += 1;
-
-                            if (numberOfChecks === 40) {
-                                window.clearInterval(checkInterval);
-                            }
+                    // After initialization, update the VCR with total time.
+                    // At this point only the metadata duration is available (not
+                    // very precise), but it is better than having 00:00:00 for
+                    // total time.
+                    state.trigger(
+                        'videoControl.updateVcrVidTime',
+                        {
+                            time: 0,
+                            duration: duration
                         }
-                    }
-                }());
+                    );
+
+                    state.trigger(
+                        'videoProgressSlider.updateStartEndTimeRegion',
+                        {
+                            duration: duration
+                        }
+                    );
+                });
             });
         }
 
