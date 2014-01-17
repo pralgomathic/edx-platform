@@ -132,3 +132,16 @@ def delete_one_component(step):
 def edit_and_save_component(step):
     world.css_click('.edit-button')
     world.css_click('.save-button')
+
+
+@step(u'I duplicate the "([^"]*)" component$')
+def duplicated_component(step, index):
+    duplicate_btn_css = 'a.duplicate-button'
+    world.css_click(duplicate_btn_css, int(index))
+
+
+@step(u'I see a Problem component with display name "([^"]*)" in position "([^"]*)"$')
+def see_component_in_position(step, display_name, index):
+    component_css = 'section.xmodule_CapaModule'
+    text = world.css_text(component_css, int(index))
+    assert_in(display_name.upper(), text)
