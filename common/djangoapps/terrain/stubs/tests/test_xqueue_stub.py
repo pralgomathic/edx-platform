@@ -8,7 +8,7 @@ import json
 import requests
 import time
 import copy
-from terrain.stubs.xqueue import StubXQueueService
+from terrain.stubs.xqueue import StubXQueueService, StubXQueueHandler
 
 
 class StubXQueueServiceTest(unittest.TestCase):
@@ -19,7 +19,7 @@ class StubXQueueServiceTest(unittest.TestCase):
         self.addCleanup(self.server.shutdown)
 
         # For testing purposes, do not delay the grading response
-        self.server.set_config('response_delay', 0)
+        self.server.config['response_delay'] = 0
 
     @mock.patch('terrain.stubs.xqueue.post')
     def test_grade_request(self, post):
@@ -41,11 +41,11 @@ class StubXQueueServiceTest(unittest.TestCase):
         self._check_grade_response(post, callback_url, expected_header, expected_body)
 
     @mock.patch('terrain.stubs.xqueue.post')
-    def test_configure_global_response(self, post):
+    def test_configure_default_response(self, post):
 
         # Configure the default response for submissions to any queue
         response_content = {'test_response': 'test_content'}
-        self.server.set_config('global_grade_response', response_content)
+        self.server.config['default'] = response_content
 
         # Post a submission to the stub XQueue
         callback_url = 'http://127.0.0.1:8000/test_callback'
@@ -65,22 +65,48 @@ class StubXQueueServiceTest(unittest.TestCase):
         )
 
     @mock.patch('terrain.stubs.xqueue.post')
-    def test_configure_queue_response(self, post):
+    def test_configure_specific_response(self, post):
 
         # Configure the XQueue stub response to any submission to the test queue
         response_content = {'test_response': 'test_content'}
-        self.server.set_config('test_queue', response_content)
+        self.server.config['This is only a test.'] = response_content
 
         # Post a submission to the XQueue stub
         callback_url = 'http://127.0.0.1:8000/test_callback'
         expected_header = self._post_submission(
-            callback_url, 'test_queuekey', 'test_queue', 'test_body'
+            callback_url, 'test_queuekey', 'test_queue',
+            json.dumps({'submission': 'This is only a test.'})
         )
 
         # Check that we receive the response we configured
         self._check_grade_response(
             post, callback_url, expected_header, json.dumps(response_content)
         )
+
+    @mock.patch('terrain.stubs.xqueue.post')
+    def test_multiple_response_matches(self, post):
+
+        # Configure the XQueue stub with two responses that
+        # match the same submission
+        self.server.config['test_1'] = {'response': True}
+        self.server.config['test_2'] = {'response': False}
+
+        with mock.patch('terrain.stubs.http.LOGGER') as logger:
+
+            # Post a submission to the XQueue stub
+            callback_url = 'http://127.0.0.1:8000/test_callback'
+            expected_header = self._post_submission(
+                callback_url, 'test_queuekey', 'test_queue',
+                json.dumps({'submission': 'test_1 and test_2'})
+            )
+
+            # Wait for the delayed grade response
+            self._wait_for_mock_called(logger.error, max_time=10)
+
+            # Expect that we do NOT receive a response
+            # and that an error message is logged
+            self.assertFalse(post.called)
+            self.assertTrue(logger.error.called)
 
     def _post_submission(self, callback_url, lms_key, queue_name, xqueue_body):
         """
@@ -124,14 +150,9 @@ class StubXQueueServiceTest(unittest.TestCase):
 
         Raises an `AssertionError` if the check fails.
         """
-
         # Wait for the server to POST back to the callback URL
-        # Time out if it takes too long
-        start_time = time.time()
-        while time.time() - start_time < 10:
-            if post_mock.called:
-                break
-            time.sleep(1)
+        # If it takes too long, continue anyway
+        self._wait_for_mock_called(post_mock, max_time=10)
 
         # Check the response posted back to us
         # This is the default response
@@ -142,3 +163,14 @@ class StubXQueueServiceTest(unittest.TestCase):
 
         # Check that the POST request was made with the correct params
         post_mock.assert_called_with(callback_url, data=expected_callback_dict)
+
+    def _wait_for_mock_called(self, mock_obj, max_time=10):
+        """
+        Wait for `mock` (a `Mock` object) to be called.
+        If seconds elapsed exceeds `max_time`, continue without error.
+        """
+        start_time = time.time()
+        while time.time() - start_time < max_time:
+            if mock_obj.called:
+                break
+            time.sleep(1)

@@ -39,10 +39,7 @@ class StubHttpServiceTest(unittest.TestCase):
 
         # Check that the expected values were set in the configuration
         for key, val in params.iteritems():
-            self.assertEqual(self.server.config(key), val)
-
-    def test_default_config(self):
-        self.assertEqual(self.server.config('not_set', default=42), 42)
+            self.assertEqual(self.server.config.get(key), val)
 
     def test_bad_json(self):
         response = requests.put(self.url, data="{,}")

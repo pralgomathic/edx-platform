@@ -2,8 +2,8 @@
 Stub implementation of XQueue for acceptance tests.
 
 Configuration values:
-    "global_grade_response" (dict): Default response to be sent to LMS as a grade for a submission
-    "<queue_name>" (dict): Grade response to return for submissions to the queue called <queue_name>
+    "default" (dict): Default response to be sent to LMS as a grade for a submission
+    "<submission>" (dict): Grade response to return for submissions containing the text <submission>
 
 If no grade response is configured, a default response will be returned.
 """
@@ -38,7 +38,6 @@ class StubXQueueHandler(StubHttpRequestHandler):
             try:
                 xqueue_header = json.loads(self.post_dict['xqueue_header'])
                 callback_url = xqueue_header['lms_callback_url']
-                queue_name = xqueue_header['queue_name']
 
             except KeyError:
                 # If the message doesn't have a header or body,
@@ -62,11 +61,11 @@ class StubXQueueHandler(StubHttpRequestHandler):
                 # Otherwise, the problem will not realize it's
                 # queued and it will keep waiting for a response indefinitely
                 delayed_grade_func = lambda: self._send_grade_response(
-                    callback_url, queue_name, xqueue_header
+                    callback_url, xqueue_header, self.post_dict['xqueue_body']
                 )
 
                 threading.Timer(
-                    self.server.config('response_delay', default=self.DEFAULT_RESPONSE_DELAY),
+                    self.server.config.get('response_delay', self.DEFAULT_RESPONSE_DELAY),
                     delayed_grade_func
                 ).start()
 
@@ -95,29 +94,48 @@ class StubXQueueHandler(StubHttpRequestHandler):
         else:
             self.send_response(500)
 
-    def _send_grade_response(self, postback_url, queue_name, xqueue_header):
+    def _send_grade_response(self, postback_url, xqueue_header, xqueue_body_json):
         """
         POST the grade response back to the client
         using the response provided by the server configuration.
 
         Uses the server configuration to determine what response to send:
-        1) Specific response for submissions to `queue_name`
-        2) Global submission configured by client
+        1) Specific response for submissions containing matching text in `xqueue_body`
+        2) Default submission configured by client
         3) Default submission
 
         `postback_url` is the URL the client told us to post back to
-        `queue_name` is the name of the queue the submission was sent to
-        `xqueue_header` is the full header the client sent us, which we will send back
+        `xqueue_header` (dict) is the full header the client sent us, which we will send back
         to the client so it can authenticate us.
+        `xqueue_body_json` (json-encoded string) is the body of the submission the client sent us.
         """
-        # First check if we have a configured response for this queue
-        grade_response = self.server.config(queue_name)
+        # First check if we have a configured response that matches the submission body
+        grade_response = None
+
+        # This matches the pattern against the JSON-encoded xqueue_body
+        # This is very simplistic, but sufficient to associate a student response
+        # with a grading response.
+        # There is a danger here that a submission will match multiple response patterns.
+        # Rather than fail silently (which could cause unpredictable behavior in tests)
+        # we abort and log a debugging message.
+        for pattern, response in self.server.config.iteritems():
+
+            if pattern in xqueue_body_json:
+                if grade_response is None:
+                    grade_response = response
+
+                # Multiple matches, so abort and log an error
+                else:
+                    self.log_error(
+                        "Multiple response patterns matched '{0}'".format(xqueue_body_json),
+                    )
+                    return
 
         # Fall back to the global grade response configured for this queue,
         # then to the default response.
         if grade_response is None:
-            grade_response = self.server.config(
-                'global_grade_response', default=copy.deepcopy(self.DEFAULT_GRADE_RESPONSE)
+            grade_response = self.server.config.get(
+                'default', copy.deepcopy(self.DEFAULT_GRADE_RESPONSE)
             )
 
         # Wrap the message in <div> tags to ensure that it is valid XML

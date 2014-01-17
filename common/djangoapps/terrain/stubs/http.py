@@ -23,14 +23,13 @@ class StubHttpRequestHandler(BaseHTTPRequestHandler, object):
         """
         Redirect messages to keep the test console clean.
         """
+        LOGGER.debug(self._format_msg(format_str, *args))
 
-        msg = u"{0} - - [{1}] {2}\n".format(
-            self.client_address[0],
-            self.log_date_time_string(),
-            format_str % args
-        )
-
-        LOGGER.debug(msg)
+    def log_error(self, format_str, *args):
+        """
+        Helper to log a server error.
+        """
+        LOGGER.error(self._format_msg(format_str, *args))
 
     @lazy
     def request_content(self):
@@ -103,7 +102,7 @@ class StubHttpRequestHandler(BaseHTTPRequestHandler, object):
                         self.send_response(400)
 
                     else:
-                        self.server.set_config(key, value)
+                        self.server.config[key] = value
                         self.send_response(200)
 
             # No parameters sent to configure, so return success by default
@@ -136,6 +135,18 @@ class StubHttpRequestHandler(BaseHTTPRequestHandler, object):
         if content is not None:
             self.wfile.write(content)
 
+    def _format_msg(self, format_str, *args):
+        """
+        Format message for logging.
+        `format_str` is a string with old-style Python format escaping;
+        `args` is an array of values to fill into the string.
+        """
+        return u"{0} - - [{1}] {2}\n".format(
+            self.client_address[0],
+            self.log_date_time_string(),
+            format_str % args
+        )
+
 
 class StubHttpService(HTTPServer, object):
     """
@@ -155,7 +166,7 @@ class StubHttpService(HTTPServer, object):
         HTTPServer.__init__(self, address, self.HANDLER_CLASS)
 
         # Create a dict to store configuration values set by the client
-        self._config = dict()
+        self.config = dict()
 
         # Start the server in a separate thread
         server_thread = threading.Thread(target=self.serve_forever)
@@ -182,16 +193,3 @@ class StubHttpService(HTTPServer, object):
         """
         _, port = self.server_address
         return port
-
-    def config(self, key, default=None):
-        """
-        Return the configuration value for `key`.  If this
-        value has not been set, return `default` instead.
-        """
-        return self._config.get(key, default)
-
-    def set_config(self, key, value):
-        """
-        Set the configuration `value` for `key`.
-        """
-        self._config[key] = value

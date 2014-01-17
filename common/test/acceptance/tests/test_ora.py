@@ -37,6 +37,9 @@ class OpenResponseTest(WebAppTest):
             'display_name': 'Test Course' + self.unique_id
         }
 
+        # Create a unique submission
+        self.submission = "Test submission " + self.unique_id
+
         # Ensure fixtures are installed
         super(OpenResponseTest, self).setUp()
 
@@ -72,10 +75,16 @@ class OpenResponseTest(WebAppTest):
             )
         )
 
-        # Configure the XQueue stub's response
+        # Configure the XQueue stub's response for the text we will submit
         xqueue_fix = XQueueResponseFixture(
-            'open-ended',
-            {}
+            self.submission, {
+                'score': '',
+                'feedback': '',
+                'grader_type': '',
+                'success': '',
+                'grader_id': '',
+                'submission_id': '',
+            }
         )
 
         return [course_fix, xqueue_fix]
