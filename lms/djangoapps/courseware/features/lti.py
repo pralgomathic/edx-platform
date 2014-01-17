@@ -185,10 +185,11 @@ def i_am_registered_for_the_course(course, metadata, user='Instructor'):
     # Create the course
     create_course(course, metadata)
 
-    factory_class = user + 'Factory'
-
     # Create user
-    user = factory_class(course=world.scenario_dict['COURSE'].location)
+    if user == 'BetaTester':
+        user = BetaTesterFactory(course=world.scenario_dict['COURSE'].location)
+    else:
+        user = InstructorFactory(course=world.scenario_dict['COURSE'].location)
 
     # Enroll the user in the course and log them in
     world.enroll_user(user, course_id(course))
