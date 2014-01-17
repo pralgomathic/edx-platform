@@ -68,7 +68,7 @@ htmlhelp_basename = 'edXDocs'
 # --- Mock modules ------------------------------------------------------------
 
 # Mock all the modules that the readthedocs build can't import
-import mock
+#import mock
 
 class Mock(object):
     def __init__(self, *args, **kwargs):
