@@ -246,17 +246,13 @@ class @MarkdownEditingDescriptor extends XModule.Descriptor
               processNumericalResponse = function (value) {
                   var params, answer, string;
 
-                  if (_.contains(['[', '('], value[0])) { // [5, 7) or (5, 7)  - range tolerance case
-                    /*var borders =  value.replace('\[\(\]\)', '').replace(/ /g,'').split(',');
-                    if (_.reject(borders, parseFloat).length != 0) {
-                      return false;
-                    }
-                    string = '<numericalresponse answer="' + borders[0] + '">\n';
-                    string += '  <responseparam type="range_tolerance" left="0" right="' + borders[1] +
-                      '" include_left="' + ((_.contains(value,'[')) ? 'yes' : 'no') +
-                      '" include_right="' + ((_.contains(value,']')) ? 'yes' : 'no') + '"/>\n';*/
-                    //return string;
-                    return '5'
+                  if (_.contains([ '[', '(' ], value[0]) && _.contains([ ']', ')' ], value[-1]) ) {
+                    // [5, 7) or (5, 7), or (1.2345 * (2+3), 7*4 ]  - range tolerance case
+                    // = (5*2)*3 should not be used as range tolerance
+                    string = '<numericalresponse answer="' + value +  '">\n';
+                    string += '  <formulaequationinput />\n';
+                    string += '</numericalresponse>\n\n';
+                    return string;
                   }
 
                   if (isNaN(parseFloat(value))) {
@@ -264,7 +260,7 @@ class @MarkdownEditingDescriptor extends XModule.Descriptor
                   }
 
                   // Tries to extract parameters from string like 'expr +- tolerance'
-                  params_tol_1 = /(.*?)\+\-\s*(.*?$)/.exec(value);
+                  params = /(.*?)\+\-\s*(.*?$)/.exec(value);
 
                   if(params) {
                       answer = params[1].replace(/\s+/g, ''); // support inputs like 5*2 +- 10
