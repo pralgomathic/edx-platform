@@ -143,5 +143,8 @@ def duplicated_component(step, index):
 @step(u'I see a Problem component with display name "([^"]*)" in position "([^"]*)"$')
 def see_component_in_position(step, display_name, index):
     component_css = 'section.xmodule_CapaModule'
-    text = world.css_text(component_css, int(index))
-    assert_in(display_name.upper(), text)
+
+    def find_problem(_driver):
+        return world.css_text(component_css, int(index)).startswith(display_name.upper())
+
+    world.wait_for(find_problem, timeout_msg='Did not find the duplicated problem')
