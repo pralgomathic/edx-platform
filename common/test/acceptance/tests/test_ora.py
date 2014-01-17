@@ -9,6 +9,7 @@ from ..edxapp_pages.lms.tab_nav import TabNavPage
 from ..edxapp_pages.lms.course_nav import CourseNavPage
 from ..edxapp_pages.lms.open_response import OpenResponsePage
 from ..fixtures.course import XBlockFixtureDesc, CourseFixture
+from ..fixtures.xqueue import XQueueResponseFixture
 
 from .helpers import load_data_str
 
@@ -53,7 +54,10 @@ class OpenResponseTest(WebAppTest):
     def fixtures(self):
         """
         Create a test course with open response problems.
+        Configure the XQueue stub to respond to submissions to the open-ended queue.
         """
+
+        # Configure the test course
         course_fix = CourseFixture(
             self.course_info['org'], self.course_info['number'],
             self.course_info['run'], self.course_info['display_name']
@@ -68,7 +72,13 @@ class OpenResponseTest(WebAppTest):
             )
         )
 
-        return [course_fix]
+        # Configure the XQueue stub's response
+        xqueue_fix = XQueueResponseFixture(
+            'open-ended',
+            {}
+        )
+
+        return [course_fix, xqueue_fix]
 
     def submit_essay(self, expected_assessment_type, expected_prompt):
         """
@@ -150,8 +160,6 @@ class AIAssessmentTest(OpenResponseTest):
             self.ui['lms.open_response'].grader_status,
             "Your response has been submitted. Please check back later for your grade."
         )
-
-        from nose.tools import set_trace; set_trace()
 
 
 class PeerAssessmentTest(OpenResponseTest):

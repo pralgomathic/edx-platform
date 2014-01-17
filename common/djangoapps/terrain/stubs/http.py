@@ -24,7 +24,7 @@ class StubHttpRequestHandler(BaseHTTPRequestHandler, object):
         Redirect messages to keep the test console clean.
         """
 
-        msg = "{0} - - [{1}] {2}\n".format(
+        msg = u"{0} - - [{1}] {2}\n".format(
             self.client_address[0],
             self.log_date_time_string(),
             format_str % args
@@ -76,22 +76,39 @@ class StubHttpRequestHandler(BaseHTTPRequestHandler, object):
     def do_PUT(self):
         """
         Allow callers to configure the stub server using the /set_config URL.
+        The request should have POST data, such that:
+
+            Each POST parameter is the configuration key.
+            Each POST value is a JSON-encoded string value for the configuration.
         """
         if self.path == "/set_config" or self.path == "/set_config/":
 
-            for key, value in self.post_dict.iteritems():
-                self.log_message("Set config '{0}' to '{1}'".format(key, value))
+            if len(self.post_dict) > 0:
+                for key, value in self.post_dict.iteritems():
 
-                try:
-                    value = json.loads(value)
+                    # Decode the params as UTF-8
+                    try:
+                        key = unicode(key, 'utf-8')
+                        value = unicode(value, 'utf-8')
+                    except UnicodeDecodeError:
+                        self.log_message("Could not decode request params as UTF-8")
 
-                except ValueError:
-                    self.log_message(u"Could not parse JSON: {0}".format(value))
-                    self.send_response(400)
+                    self.log_message(u"Set config '{0}' to '{1}'".format(key, value))
 
-                else:
-                    self.server.set_config(unicode(key, 'utf-8'), value)
-                    self.send_response(200)
+                    try:
+                        value = json.loads(value)
+
+                    except ValueError:
+                        self.log_message(u"Could not parse JSON: {0}".format(value))
+                        self.send_response(400)
+
+                    else:
+                        self.server.set_config(key, value)
+                        self.send_response(200)
+
+            # No parameters sent to configure, so return success by default
+            else:
+                self.send_response(200)
 
         else:
             self.send_response(404)
@@ -178,4 +195,3 @@ class StubHttpService(HTTPServer, object):
         Set the configuration `value` for `key`.
         """
         self._config[key] = value
-
