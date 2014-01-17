@@ -202,6 +202,7 @@ def _cert_info(user, course, cert_status):
         CertificateStatuses.restricted: 'restricted',
     }
 
+    # TODO: We need the thing on the sidebar to mention if reverification, as per UI flows.
     status = template_state.get(cert_status['status'], default_status)
 
     d = {'status': status,
@@ -383,6 +384,8 @@ def dashboard(request):
     )
 
     # Verification Attempts
+    # Used to generate the "you must reverify for course x" banner
+    # TODO: make this banner appear at the top of courseware as well
     verification_status, verification_msg = SoftwareSecurePhotoVerification.user_status(user)
 
     # TODO: Factor this out into a function; I'm pretty sure there's code duplication floating around...

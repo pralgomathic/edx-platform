@@ -334,7 +334,6 @@ class MidCourseReverifyView(View):
         - retrieve the old id photo
         - submit these photos to photo verification service
 
-    Does not need to be attached to a particular course (TODO er make sure that's true)
     Does not need to worry about pricing
     """
     @method_decorator(login_required)
@@ -354,21 +353,14 @@ class MidCourseReverifyView(View):
         """
         submits the reverification to SoftwareSecure
         """
-
-        # TODO Okay, change this to do the new midcourse reverifications.
-
         try:
-            # TODO make sure we don't need something more specialized, i.e. a subclass on SSPV
-
-            #from nose.tools import set_trace; set_trace()
+            # TODO look at this more carefully! #1 testing candidate
             now = datetime.datetime.now(UTC)
             attempt = SSPMidcourseReverification(user=request.user, window=MidcourseReverificationWindow.get_window(course_id, now))
             b64_face_image = request.POST['face_image'].split(",")[1]
 
             attempt.upload_face_image(b64_face_image.decode('base64'))
             attempt.fetch_photo_id_image()
-            #TODO think about how we'll mark attempts
-            # crying when I save because the database is funky, TODO fix
             attempt.mark_ready()
 
             attempt.save()
@@ -385,6 +377,7 @@ class MidCourseReverifyView(View):
             return render_to_response("verify_student/midcourse_photo_reverification.html", context)
 
 def midcourse_reverify_dash(_request):
+    # TODO same comment as in student/views.py: need to factor out this functionality
     user = _request.user
     course_enrollment_pairs = []
     for enrollment in CourseEnrollment.enrollments_for_user(user):
@@ -416,7 +409,6 @@ def reverification_submission_confirmation(_request):
     """
     Shows the user a confirmation page if the submission to SoftwareSecure was successful
     """
-
     return render_to_response("verify_student/reverification_confirmation.html")
 
 @login_required
@@ -424,5 +416,4 @@ def midcourse_reverification_confirmation(_request):
     """
     Shows the user a confirmation page if the submission to SoftwareSecure was successful
     """
-
     return render_to_response("verify_student/midcourse_reverification_confirmation.html")

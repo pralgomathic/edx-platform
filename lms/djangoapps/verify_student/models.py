@@ -754,6 +754,13 @@ class SSPMidcourseReverification(SoftwareSecurePhotoVerification):
     and `SoftwareSecurePhotoVerification`, but it might make more sense to just inherit
     from `PhotoVerification`, or maybe not at all... a lot of classes had to get stomped/
     rewritten.  Will think about this during CR.
+
+    TODO: another important thing to note during CR: right now we're assuming there's one
+    window per (user, course) combo.  This is UNTRUE in general (there can be many windows
+    per course, user pair), but we only need ONE window per (user, course) to launch.
+    Note the user_status methods in particular make this assumption.
+
+    Fix this if time permits...
     """
     window = models.ForeignKey(MidcourseReverificationWindow, db_index=True)
 
@@ -833,7 +840,7 @@ class SSPMidcourseReverification(SoftwareSecurePhotoVerification):
     def upload_photo_id_image(self, img_data):
         raise NotImplementedError
 
-    # guhhh gonna have to override a lot of the user_status stuff
+    # TODO right now this does nothing but return must_reverify, fix!!!
     @classmethod
     def get_status_for_window(cls, user, window):
         """
@@ -854,6 +861,8 @@ class SSPMidcourseReverification(SoftwareSecurePhotoVerification):
 
     # can't just inherit the old user_status function, because it's insufficiently specific
     # reverifications are unique for a particular (user, window) pair, not just on user
+    # TODO: Note that a lot of the user_status related stuff is having to get overwritten.
+    # Does it still make sense to inherit from our parent object(s)?
     @classmethod
     def user_status(cls, user):
         raise NotImplementedError
@@ -905,6 +914,7 @@ class SSPMidcourseReverification(SoftwareSecurePhotoVerification):
 
         return (status, error_msg)
 
+    # can't inherit
     @classmethod
     def user_is_verified(cls, user):
         raise NotImplementedError
@@ -915,10 +925,7 @@ class SSPMidcourseReverification(SoftwareSecurePhotoVerification):
             user=user, status="approved", window__course_id=course_id
         ).exists()
 
-    # TODO note: right now we're assuming there is one window per (user, course_id) pair
-    # this will be UNTRUE in future versions of the code, but since MIT needs this feature just once
-    # for now, we can assume uniqueness
-
+    # can't inherit
     @classmethod
     def user_has_valid_or_pending(cls, user):
         return NotImplementedError
@@ -933,6 +940,7 @@ class SSPMidcourseReverification(SoftwareSecurePhotoVerification):
             status__in=valid_statuses,
         ).exists()
 
+    # can't inherit
     @classmethod
     def active_for_user(cls, user):
         return NotImplementedError
@@ -944,10 +952,3 @@ class SSPMidcourseReverification(SoftwareSecurePhotoVerification):
             return active_attempts[0]
         else:
             return None
-
-    # submit inherits
-
-    # create_request inherits
-
-    # send_request inherit
-

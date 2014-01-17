@@ -1,3 +1,4 @@
+// TODO diff this against photocapture.js, see if I actually needed a whole honking new file
 var onVideoFail = function(e) {
   if(e == 'NO_DEVICES_FOUND') {
       $('#no-webcam').show();
