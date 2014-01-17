@@ -82,15 +82,16 @@ def check_messages(filename):
     if "/locale/en/" in filename:
         return
 
-    # problems will be a list of tuples.  Each is a description, and a msgid,
-    # and then zero or more translations.
+    # problems will be a list of tuples.  Each is a string listing occurrences,
+    # a description, and a msgid, and then zero or more translations.
+    occurrences = lambda msg: ', '.join('{}:{}'.format(*o) for o in msg.occurrences)
     problems = []
     pomsgs = polib.pofile(filename)
     for msg in pomsgs:
         # Check for characters Javascript can't support.
         # https://code.djangoproject.com/ticket/21725
         if astral(msg.msgstr):
-            problems.append(("Non-BMP char", msg.msgid, msg.msgstr))
+            problems.append((occurrences(msg), "Non-BMP char", msg.msgid, msg.msgstr))
 
         if msg.msgid_plural:
             # Plurals: two strings in, N strings out.
@@ -104,7 +105,7 @@ def check_messages(filename):
             empty = not msg.msgstr.strip()
 
         if empty:
-            problems.append(("Empty translation", source))
+            problems.append((occurrences(msg), "Empty translation", source))
         else:
             id_tags = tags_in_string(source)
             tx_tags = tags_in_string(translation)
@@ -118,6 +119,7 @@ def check_messages(filename):
                 else:
                     diff = u"{} added".format(tx_has)
                 problems.append((
+                    occurrences(msg),
                     "Different tags in source and translation",
                     source,
                     translation,
@@ -130,9 +132,9 @@ def check_messages(filename):
         tx_filler = textwrap.TextWrapper(width=79, initial_indent="  -----> ", subsequent_indent=" " * 9)
         with codecs.open(problem_file, "w", encoding="utf8") as prob_file:
             for problem in problems:
-                desc, msgid = problem[:2]
-                prob_file.write(u"{}\n{}\n".format(desc, id_filler.fill(msgid)))
-                for translation in problem[2:]:
+                occurs, desc, msgid = problem[:3]
+                prob_file.write(u"{}\n{}\n{}\n".format(occurs, desc, id_filler.fill(msgid)))
+                for translation in problem[3:]:
                     prob_file.write(u"{}\n".format(tx_filler.fill(translation)))
                 prob_file.write(u"\n")
 
