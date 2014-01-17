@@ -58,27 +58,13 @@
             oldOTBD = window.onTouchBasedDevice;
             window.onTouchBasedDevice = jasmine.createSpy('onTouchBasedDevice')
                 .andReturn(null);
-            this.oldYT = window.YT;
 
             jasmine.stubRequests();
-            window.YT = {
-              Player: function () {
-                return {
-                    getPlaybackQuality: function () {},
-                    getDuration: function () { return 60; }
-                };
-              },
-              PlayerState: this.oldYT.PlayerState,
-              ready: function (callback) {
-                  callback();
-              }
-            };
         });
 
         afterEach(function () {
             $('source').remove();
             window.onTouchBasedDevice = oldOTBD;
-            window.YT = this.oldYT;
         });
 
         it('initialize', function(){

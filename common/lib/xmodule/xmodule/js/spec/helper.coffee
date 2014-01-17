@@ -3,6 +3,7 @@ window.YT =
   Player: ->
     getDuration: ->
       60
+    getPlaybackQuality: ->
   PlayerState:
     UNSTARTED: -1
     ENDED: 0
@@ -124,28 +125,6 @@ jasmine.stubRequests = ->
       # do nothing
     else
       throw "External request attempted for #{settings.url}, which is not defined."
-
-jasmine.stubYoutubePlayer = ->
-  YT.Player = ->
-    obj = jasmine.createSpyObj 'YT.Player', ['cueVideoById', 'getVideoEmbedCode',
-    'getCurrentTime', 'getPlayerState', 'getVolume', 'setVolume', 'loadVideoById',
-    'playVideo', 'pauseVideo', 'seekTo', 'getDuration', 'getAvailablePlaybackRates', 'setPlaybackRate']
-    obj['getDuration'] = jasmine.createSpy('getDuration').andReturn 60
-    obj['getAvailablePlaybackRates'] = jasmine.createSpy('getAvailablePlaybackRates').andReturn [0.75, 1.0, 1.25, 1.5]
-    obj
-
-jasmine.stubVideoPlayer = (context, enableParts, html5=false) ->
-  suite = context.suite
-  currentPartName = suite.description while suite = suite.parentSuite
-  if html5 == false
-    loadFixtures 'video.html'
-  else
-    loadFixtures 'video_html5.html'
-  jasmine.stubRequests()
-  YT.Player = undefined
-  window.OldVideoPlayer = undefined
-  jasmine.stubYoutubePlayer()
-  return new Video '#example', '.75:7tqY6eQzVhE,1.0:cogebirgzzM'
 
 # Add custom matchers
 beforeEach ->

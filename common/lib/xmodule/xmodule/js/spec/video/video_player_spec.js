@@ -112,19 +112,9 @@
             });
 
             it('create Youtube player', function () {
-                var oldYT = window.YT, events;
+                var events;
 
                 jasmine.stubRequests();
-
-                window.YT = {
-                    Player: function () {
-                        return { getDuration: function () { return 60; } };
-                    },
-                    PlayerState: oldYT.PlayerState,
-                    ready: function (callback) {
-                        callback();
-                    }
-                };
 
                 spyOn(window.YT, 'Player').andCallThrough();
 
@@ -150,8 +140,6 @@
                     videoId: 'cogebirgzzM',
                     events: events
                 });
-
-                window.YT = oldYT;
             });
 
             // We can't test the invocation of HTML5Video because it is not

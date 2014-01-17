@@ -159,26 +159,10 @@
     describe('Play placeholder', function () {
 
       beforeEach(function () {
-        this.oldYT = window.YT;
-
         jasmine.stubRequests();
-        window.YT = {
-          Player: function () {
-            return { getDuration: function () { return 60; } };
-          },
-          PlayerState: this.oldYT.PlayerState,
-          ready: function (callback) {
-              callback();
-          }
-        };
 
         spyOn(window.YT, 'Player').andCallThrough();
       });
-
-      afterEach(function () {
-        window.YT = this.oldYT;
-      });
-
 
       it ('works correctly on calling proper methods', function () {
         initialize();

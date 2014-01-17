@@ -22,22 +22,8 @@
     });
 
     describe('constructor', function() {
-      var oldYT = window.YT;
-
       beforeEach(function() {
-        window.YT = {
-            Player: function () {
-              return { getDuration: function () { return 60; } };
-            },
-            PlayerState: oldYT.PlayerState,
-            ready: function(f){f();}
-        };
-
         initialize();
-      });
-
-      afterEach(function () {
-        window.YT = oldYT;
       });
 
       it('render the quality control', function() {

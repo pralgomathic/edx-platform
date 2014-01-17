@@ -181,6 +181,14 @@ function (HTML5Video, Resizer) {
                 // Metadata contains duration of the video. We wait for 2
                 // seconds, and then abandon our attempts to update the VCR
                 // video time (and the start-end time region) using metadata.
+                //
+                // 2 seconds has been chosen because there is no point in
+                // waiting for a longer period of time. If by the end of 2
+                // seconds metadata does not arrive, then either the user has
+                // a really slow connection, or something is wrong with the
+                // YouTube service, or YouTube is blocked. In either case
+                // we have other mechanisms to handle these situations. The
+                // start-end range will be shown when the video start playing.
                 (function () {
                     var checkInterval = window.setInterval(
                             checkForMetadata, 50
